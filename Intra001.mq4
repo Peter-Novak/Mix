@@ -51,8 +51,7 @@ int init() {
    currentState = INITIAL_STATE;
    valueOfOpenPositions = 0.0;
    minimumValueOfOpenPositions = 0.0;
-   // currentCandleOpenTime = iTime(NULL, PERIOD_D1, 0);
-   currentCandleOpenTime = 0;
+   currentCandleOpenTime = iTime(NULL, PERIOD_D1, 0);
    return(0);
 } // init
 
@@ -161,7 +160,7 @@ int Finished() {
 int OpenPosition(int direction, double sizeInLots, double stopLossPrice, double takeProfitPrice) {
    int numberOfRetries = 10;
    double orderPrice;
-   string positionLabel = "D-" + iterationNumber;
+   string positionLabel = "IN-" + iterationNumber;
 
    if (direction == OP_BUY) {
       orderPrice = Ask;
@@ -276,7 +275,7 @@ double GetOpenPrice(int positionId) {
 
 int WelcomeMessage() {
    Print( "****************************************************************************************************************");
-   Print( "Good day, this is Intra version 1. I'm going to make your day... minimal drawdowns and BIIIIG profits ;)");
+   Print( "Good day, this is daily version 5. I'm going to make your day... minimal drawdowns and BIIIIG profits ;)");
    Print( "****************************************************************************************************************");
    return(0);
 }

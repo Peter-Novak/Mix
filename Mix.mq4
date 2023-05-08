@@ -45,6 +45,8 @@ int sellExtraPositionId;
 // Buy/Sell prices
 double buyExtraPositionPrice;
 double sellExtraPositionPrice;
+double buyPositionPrice;
+double sellPositionPrice;
 
 // Reverse positions
 int sell75PercentPositionId;
@@ -210,24 +212,39 @@ int BsInitialState() {
    isNewDay();
    if (buySellIsNewDay == true) {
       
-      buySellIsNewDay = false;
       atr50 = iATR(Symbol(), PERIOD_D1,50, 0);
       dailyOpenPrice = Open[0];
       
       buySellPositionLotSize = BuySellPositionSize();
-      buyPositionId = OpenPosition(OP_BUY, buySellPositionLotSize, 0, 0, "BSBuy");
-      sellPositionId = OpenPosition(OP_SELL, buySellPositionLotSize, 0, 0, "BSSell");
+      if (Ask - Bid < 0.00030) {
+         buyPositionId = OpenPosition(OP_BUY, buySellPositionLotSize, 0, 0, "BSBuy");
+         buyPositionPrice = GetOpenPrice(buyPositionId);
+         sellPositionId = OpenPosition(OP_SELL, buySellPositionLotSize, 0, 0, "BSSell");
+         sellPositionPrice = GetOpenPrice(sellPositionId);
+         buySellIsNewDay = false;
       
-      if (buyPositionId == NONE || sellPositionId == NONE) {
-         if (buyPositionId == NONE) {ClosePosition(buyPositionId);};
-         if (sellPositionId == NONE) {ClosePosition(sellPositionId);};
-         Print("Mix:[", iterationNumber, "]:", "BsInitialState: FATAL ERROR: could not open one or both initial buy / sell positions. Terminated.");
-         return(BS_FINISHED);
+         if (buyPositionId == NONE || sellPositionId == NONE) {
+            if (buyPositionId == NONE) {ClosePosition(buyPositionId);};
+            if (sellPositionId == NONE) {ClosePosition(sellPositionId);};
+            Print("Mix:[", iterationNumber, "]:", "BsInitialState: FATAL ERROR: could not open one or both initial buy / sell positions. Terminated.");
+            return(BS_FINISHED);
+         } else {
+            return(BS_TRADING_BOTH_SIDES);
+         }
       } else {
-         return(BS_TRADING_BOTH_SIDES);
+         return(BS_INITIAL_STATE);
       }
    } else {
        return(BS_INITIAL_STATE);
+   }
+}
+
+double GetOpenPrice(int positionId) {
+   if (OrderSelect(positionId, SELECT_BY_TICKET) == false) {
+      Print( "Mix001:[", iterationNumber, "]:", ":GetOpenPrice:WARNING: Position with id ", positionId, " could not be found. Open price was assumed to be 0.");
+      return(0);
+   } else {
+      return(OrderOpenPrice());
    }
 }
 
@@ -238,14 +255,16 @@ int BsTradingBothSides() {
 
    double profitGoal = atr50 * 0.1; 
    
-   if (Bid >= dailyOpenPrice + profitGoal) {
+   if (Bid >= buyPositionPrice + profitGoal) {
       ClosePosition(buyPositionId);
       buyExtraPositionId = OpenPosition(OP_SELL, buySellPositionLotSize, 0, 0, "BSBuyEx");
+      buyExtraPositionPrice = GetOpenPrice(buyExtraPositionId);
       return(BS_TRADING_BUY_EXTRA);
    } else {
-      if (Ask <= dailyOpenPrice - profitGoal) {
+      if (Ask <= sellPositionPrice - profitGoal) {
          ClosePosition(sellPositionId);
          sellExtraPositionId = OpenPosition(OP_BUY, buySellPositionLotSize, 0, 0, "BSSellEx");
+         sellExtraPositionPrice = GetOpenPrice(sellExtraPositionId);
          return(BS_TRADING_SELL_EXTRA);
       } else {
          return(BS_TRADING_BOTH_SIDES);
@@ -273,8 +292,9 @@ bool SetStopLossPrice(double price, int positionId) {
 **************************************************************************************************/
 int BsTradingBuyExtra() {
    double stopLoss;
+   double profitGoal = atr50 * 0.1; 
    
-   if (Ask <= dailyOpenPrice) {
+   if (Ask <= buyExtraPositionPrice - profitGoal) {
       ClosePosition(buyExtraPositionId);
       return(BS_TRADING_REMAINInG_SELL);
    } else {
@@ -296,8 +316,9 @@ int BsTradingBuyExtra() {
 **************************************************************************************************/
 int BsTradingSellExtra() {
    double stopLoss;
+   double profitGoal = atr50 * 0.1;
    
-   if (Bid >= dailyOpenPrice) {
+   if (Bid >= sellExtraPositionPrice + profitGoal) {
       ClosePosition(sellExtraPositionId);
       return(BS_TRADING_REMAINING_BUY);
    } else {
@@ -321,7 +342,7 @@ int BsTradingRemainingBuy() {
    double stopLoss;
    double profitGoal = atr50 * 0.1;
    
-   if (Bid >= dailyOpenPrice + profitGoal) {
+   if (Bid >= buyPositionPrice + profitGoal) {
       ClosePosition(buyPositionId);
       return(BS_FINISHED);
    } else {
@@ -346,7 +367,7 @@ int BsTradingRemainingSell() {
    double stopLoss;
    double profitGoal = atr50 * 0.1;
    
-   if (Ask <= dailyOpenPrice - profitGoal) {
+   if (Ask <= sellPositionPrice - profitGoal) {
       ClosePosition(sellPositionId);
       return(BS_FINISHED);
    } else {

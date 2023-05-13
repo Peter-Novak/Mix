@@ -64,6 +64,7 @@ double buy75PercentPositionPrice;
 double buy87PercentPositionPrice;
 double buy100PercentPositionPrice;
 double buyExitPrice;
+double reverseProfitGoal;
 
 int buySellState;
 int reverseState;
@@ -122,69 +123,69 @@ int start() {
    int currentReverseStateBeforeTick = reverseState;
    
    switch(buySellState) {
-   case BS_INITIAL_STATE:
-      buySellState = BsInitialState();
-      break;
-   case BS_TRADING_BOTH_SIDES:
-      buySellState = BsTradingBothSides();
-      break;
-   case BS_TRADING_BUY_EXTRA:
-      buySellState = BsTradingBuyExtra();
-      break;
-   case BS_TRADING_SELL_EXTRA:
-      buySellState = BsTradingSellExtra();
-      break;
-   case BS_TRADING_REMAINING_BUY:
-      buySellState = BsTradingRemainingBuy();
-      break;
-   case BS_TRADING_REMAINInG_SELL:
-      buySellState = BsTradingRemainingSell();
-      break;
-   case BS_FINISHED:
-      buySellState = BsFinished();
-      break;
-   case BS_FINISHED_WITH_LOSS:
-      buySellState = BsFinishedWithLoss();
-      break;
-   default:
-      Print("Mix:[", iterationNumber, "]:", ":start:CRITICAL ERROR: Buy / Sell State ", buySellState, " is NOT a valid state, exiting.");
-      buySellState = BS_FINISHED;
+      case BS_INITIAL_STATE:
+         buySellState = BsInitialState();
+         break;
+      case BS_TRADING_BOTH_SIDES:
+         buySellState = BsTradingBothSides();
+         break;
+      case BS_TRADING_BUY_EXTRA:
+         buySellState = BsTradingBuyExtra();
+         break;
+      case BS_TRADING_SELL_EXTRA:
+         buySellState = BsTradingSellExtra();
+         break;
+      case BS_TRADING_REMAINING_BUY:
+         buySellState = BsTradingRemainingBuy();
+         break;
+      case BS_TRADING_REMAINInG_SELL:
+         buySellState = BsTradingRemainingSell();
+         break;
+      case BS_FINISHED:
+         buySellState = BsFinished();
+         break;
+      case BS_FINISHED_WITH_LOSS:
+         buySellState = BsFinishedWithLoss();
+         break;
+      default:
+         Print("Mix:[", iterationNumber, "]:", ":start:CRITICAL ERROR: Buy / Sell State ", buySellState, " is NOT a valid state, exiting.");
+         buySellState = BS_FINISHED;
    }
    
    switch(reverseState) {
-   case RE_INITIAL_STATE:
-      reverseState = ReInitialState();
-      break;
-   case RE_WAITING_FOR_ENTRY:
-      reverseState = ReWaitingForEntry();
-      break;
-   case RE_TRADING_75PERCENT_SELL:
-      reverseState = ReTrading75PercentSell();
-      break;
-   case RE_TRADING_87PERCENT_SELL:
-      reverseState = ReTrading87PercentSell();
-      break;
-   case RE_TRADING_100PERCENT_SELL:
-      reverseState = ReTrading100PercentSell();
-      break;
-   case RE_TRADING_75PERCENT_BUY:
-      reverseState = ReTrading75PercentBuy();
-      break;
-   case RE_TRADING_87PERCENT_BUY:
-      reverseState = ReTrading87PercentBuy();
-      break;
-   case RE_TRADING_100PERCENT_BUY:
-      reverseState = ReTrading100PercentBuy();
-      break;
-   case RE_FINISHED:
-      reverseState = ReFinished();
-      break;
-   case RE_FINISHED_WITH_LOSS:
-      reverseState = ReFinishedWithLoss();
-      break;
-   default: 
-      Print("Mix:[", iterationNumber, "]:", ":start:CRITICAL ERROR: Reverse State ", reverseState, " is NOT a valid state, exiting.");
-      reverseState = RE_FINISHED;
+      case RE_INITIAL_STATE:
+         reverseState = ReInitialState();
+         break;
+      case RE_WAITING_FOR_ENTRY:
+         reverseState = ReWaitingForEntry();
+         break;
+      case RE_TRADING_75PERCENT_SELL:
+         reverseState = ReTrading75PercentSell();
+         break;
+      case RE_TRADING_87PERCENT_SELL:
+         reverseState = ReTrading87PercentSell();
+         break;
+      case RE_TRADING_100PERCENT_SELL:
+         reverseState = ReTrading100PercentSell();
+         break;
+      case RE_TRADING_75PERCENT_BUY:
+         reverseState = ReTrading75PercentBuy();
+         break;
+      case RE_TRADING_87PERCENT_BUY:
+         reverseState = ReTrading87PercentBuy();
+         break;
+      case RE_TRADING_100PERCENT_BUY:
+         reverseState = ReTrading100PercentBuy();
+         break;
+      case RE_FINISHED:
+         reverseState = ReFinished();
+         break;
+      case RE_FINISHED_WITH_LOSS:
+         reverseState = ReFinishedWithLoss();
+         break;
+      default: 
+         Print("Mix:[", iterationNumber, "]:", ":start:CRITICAL ERROR: Reverse State ", reverseState, " is NOT a valid state, exiting.");
+         reverseState = RE_FINISHED;
    }
 
    if (currentBuySellStateBeforeTick != buySellState) {
@@ -201,7 +202,11 @@ int start() {
 }
 
 double BuySellPositionSize() {
-   return(0.6);
+   return(0.8);
+}
+
+double ReversePositionSize() {
+   return(1.5);
 }
 
 /**************************************************************************************************
@@ -592,35 +597,175 @@ bool ClosePosition(int positionId) {
 }
 
 int ReInitialState() {
-   return(RE_INITIAL_STATE);
+   isNewDay();
+   if (reverseIsNewDay == true) {
+      atr50 = iATR(Symbol(), PERIOD_D1,50, 0);
+      dailyOpenPrice = Open[0];
+      
+      reversePositionLotSize = ReversePositionSize();
+      
+      sell75PercentPositionPrice  = dailyOpenPrice + 0.75  * atr50;
+      sell87PercentPositionPrice  = dailyOpenPrice + 0.875 * atr50;
+      sell100PercentPositionPrice = dailyOpenPrice + atr50;
+      sellExitPrice = dailyOpenPrice + 1.2 * atr50;
+      
+      buy75PercentPositionPrice = dailyOpenPrice - 0.75 * atr50;
+      buy87PercentPositionPrice = dailyOpenPrice - 0.875 * atr50;
+      buy100PercentPositionPrice = dailyOpenPrice - atr50;
+      buyExitPrice = dailyOpenPrice - 1.2 * atr50;
+      reverseProfitGoal = 0.125 * atr50;
+      reverseIsNewDay = false;
+      return(RE_WAITING_FOR_ENTRY);
+   } else {
+       return(RE_INITIAL_STATE);
+   }
 }
 
 int ReWaitingForEntry() {
-   return(RE_WAITING_FOR_ENTRY);
+   isNewDay();
+   if (reverseIsNewDay == true) {
+      return(RE_FINISHED);
+   } else {
+      if (Bid > sell75PercentPositionPrice || Ask < buy75PercentPositionPrice) {
+         if (Ask - Bid < 0.00030) {
+            if (Bid > sell75PercentPositionPrice) {
+               sell75PercentPositionId = OpenPosition(OP_SELL, reversePositionLotSize, 0, 0, "RE-S-75");
+               if (sell75PercentPositionId == NONE) {
+                  Print("Mix:[", iterationNumber, "]:", "ReWaitingForEntry: WARNING: could not open 75% sell position. Will retry on next tick.");
+                  return(RE_WAITING_FOR_ENTRY); 
+               } else {
+                  return(RE_TRADING_75PERCENT_SELL);
+               }
+            } else {
+               buy75PercentPositionId = OpenPosition(OP_BUY, reversePositionLotSize, 0, 0, "RE-B-75");
+               if (buy75PercentPositionId == NONE) {
+                  Print("Mix:[", iterationNumber, "]:", "ReWaitingForEntry: WARNING: could not open 75% buy position. Will retry on next tick.");
+                  return(RE_WAITING_FOR_ENTRY); 
+               } else {
+                  return(RE_TRADING_75PERCENT_BUY);
+               }
+            }
+         } else {
+            return(RE_WAITING_FOR_ENTRY);
+         }
+      } else {
+         return(RE_WAITING_FOR_ENTRY);  
+      }
+   }
 };
 
 int ReTrading75PercentSell() {
-   return(RE_TRADING_75PERCENT_SELL);
+   if (Bid > sell87PercentPositionPrice) {
+      sell87PercentPositionId = OpenPosition(OP_SELL, reversePositionLotSize, 0, 0, "RE-S-87");
+      if (sell87PercentPositionId == NONE) {
+         Print("Mix:[", iterationNumber, "]:", "ReTrading75PercentSell: WARNING: could not open 87.5% sell position. Will retry on next tick.");
+         return(RE_TRADING_75PERCENT_SELL); 
+      } else {
+         return(RE_TRADING_87PERCENT_SELL);
+      }
+   } else {
+      if (PositionValue(sell75PercentPositionId) > reverseProfitGoal) {
+         ClosePosition(sell75PercentPositionId);
+         return(RE_FINISHED);
+      } else {
+         return(RE_TRADING_75PERCENT_SELL);
+      }
+   }
 }
 
 int ReTrading87PercentSell() {
-   return(RE_TRADING_87PERCENT_SELL);
+   if (Bid > sell100PercentPositionPrice) {
+      sell100PercentPositionId = OpenPosition(OP_SELL, reversePositionLotSize, 0, 0, "RE-S-100");
+      if (sell100PercentPositionId == NONE) {
+         Print("Mix:[", iterationNumber, "]:", "ReTrading87PercentSell: WARNING: could not open 100% sell position. Will retry on next tick.");
+         return(RE_TRADING_87PERCENT_SELL); 
+      } else {
+         return(RE_TRADING_100PERCENT_SELL);
+      }
+   } else {
+      if (PositionValue(sell75PercentPositionId) + PositionValue(sell87PercentPositionId) > reverseProfitGoal) {
+         ClosePosition(sell75PercentPositionId);
+         ClosePosition(sell87PercentPositionId);
+         return(RE_FINISHED);
+      } else {
+         return(RE_TRADING_87PERCENT_SELL);
+      }
+   }
 }
 
 int ReTrading100PercentSell() {
-   return(RE_TRADING_100PERCENT_SELL);
+   if (Bid > sellExitPrice) {
+      ClosePosition(sell75PercentPositionId);
+      ClosePosition(sell87PercentPositionId);
+      ClosePosition(sell100PercentPositionId);
+      return(RE_FINISHED_WITH_LOSS);
+   } else {
+      if (PositionValue(sell75PercentPositionId) + PositionValue(sell87PercentPositionId) + PositionValue(sell100PercentPositionId) > reverseProfitGoal) {
+         ClosePosition(sell75PercentPositionId);
+         ClosePosition(sell87PercentPositionId);
+         ClosePosition(sell100PercentPositionId);
+         return(RE_FINISHED);
+      } else {
+         return(RE_TRADING_100PERCENT_SELL);
+      }
+   }
 }
 
 int ReTrading75PercentBuy() {
-   return(RE_TRADING_75PERCENT_BUY);
+   if (Ask < buy87PercentPositionPrice) {
+      buy87PercentPositionId = OpenPosition(OP_BUY, reversePositionLotSize, 0, 0, "RE-B-87");
+      if (buy87PercentPositionId == NONE) {
+         Print("Mix:[", iterationNumber, "]:", "ReTrading75PercentBuy: WARNING: could not open 87.5% buy position. Will retry on next tick.");
+         return(RE_TRADING_75PERCENT_BUY); 
+      } else {
+         return(RE_TRADING_87PERCENT_BUY);
+      }
+   } else {
+      if (PositionValue(buy75PercentPositionId) > reverseProfitGoal) {
+         ClosePosition(buy75PercentPositionId);
+         return(RE_FINISHED);
+      } else {
+         return(RE_TRADING_75PERCENT_BUY);
+      }
+   }
 }
 
 int ReTrading87PercentBuy() {
-   return(RE_TRADING_87PERCENT_BUY);
+   if (Ask < buy100PercentPositionPrice) {
+      buy100PercentPositionId = OpenPosition(OP_BUY, reversePositionLotSize, 0, 0, "RE-B-100");
+      if (buy100PercentPositionId == NONE) {
+         Print("Mix:[", iterationNumber, "]:", "ReTrading87PercentBuy: WARNING: could not open 100% buy position. Will retry on next tick.");
+         return(RE_TRADING_87PERCENT_BUY); 
+      } else {
+         return(RE_TRADING_100PERCENT_BUY);
+      }
+   } else {
+      if (PositionValue(buy75PercentPositionId) + PositionValue(buy87PercentPositionId) > reverseProfitGoal) {
+         ClosePosition(buy75PercentPositionId);
+         ClosePosition(buy87PercentPositionId);
+         return(RE_FINISHED);
+      } else {
+         return(RE_TRADING_87PERCENT_BUY);
+      }
+   }
 }
 
 int ReTrading100PercentBuy() {
-   return(RE_TRADING_100PERCENT_BUY);
+   if (Ask < buyExitPrice) {
+      ClosePosition(buy75PercentPositionId);
+      ClosePosition(buy87PercentPositionId);
+      ClosePosition(buy100PercentPositionId);
+      return(RE_FINISHED_WITH_LOSS);
+   } else {
+      if (PositionValue(buy75PercentPositionId) + PositionValue(buy87PercentPositionId) + PositionValue(buy100PercentPositionId) > reverseProfitGoal) {
+         ClosePosition(buy75PercentPositionId);
+         ClosePosition(buy87PercentPositionId);
+         ClosePosition(buy100PercentPositionId);
+         return(RE_FINISHED);
+      } else {
+         return(RE_TRADING_100PERCENT_BUY);
+      }
+   }
 }
 
 int ReFinished() {
